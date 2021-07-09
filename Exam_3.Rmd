@@ -1,0 +1,215 @@
+---
+title: "Exam_3"
+author: "Stern"
+date: "7/8/2021"
+output: word_document
+---
+
+##1 clear environment
+
+```{r}
+rm(list=ls(all=TRUE))
+```
+
+##2 Use the WDI package to download data on female labor force participation for all countries for the years 2010-2015. Save the data frame as female_lfp. (Hint: you may will need to Google the indicator.) 
+#https://data.worldbank.org/indicator/SL.TLF.CACT.FE.ZS
+```{r}
+library(WDI)
+female_lfp = WDI(country = "all",
+                      indicator = c("SL.TLF.CACT.FE.ZS"), # indicator from web 
+                      start = 2010, end = 2015, extra = FALSE, cache = NULL)
+```
+
+##3 rename variable to flfp
+```{r}
+library(tidyverse)
+female_lfp <- 
+  female_lfp %>%
+  rename(flfp = SL.TLF.CACT.FE.ZS)
+```
+
+
+##4  Collapse female_lfp by the mean value for flfp for each country. When you do, keep the ISO-2 country code in your data frame as well as the country name. Name your resulting data frame collapsed_flfp.
+```{r}
+collapsed_flfp <-
+  female_lfp %>%
+  group_by(country, iso2c) %>%
+  summarize(flfp = mean(flfp, na.rm=TRUE))
+```
+
+##5 Use R to show which countries have average female force participation rates for the 2010-2015 period that are less than 15%.
+```{r}
+
+```
+
+
+##6. Use R to present a map of the world of using collapsed_flfp, using the viridis color scheme.
+#load libraries and set world and border maps
+```{r}
+library(rio)
+library(googlesheets4) 
+library(labelled) 
+library(data.table)
+library(varhandle) 
+library(ggrepel) 
+library(geosphere) 
+library(rgeos)
+library(viridis)
+library(mapview) 
+library(rnaturalearth) 
+library(rnaturalearthdata) 
+library(devtools)
+library(remotes)
+library(raster)
+library(sp) 
+library(sf)
+library(Imap)
+library(rnaturalearthhires)
+library(ggsflabel) 
+
+
+world <- ne_countries(scale = "large", returnclass = "sf")
+
+world_borders <- st_read("world border shape files/World_Borders.shp")
+
+borders <- st_transform(world_borders, "+proj=longlat +ellps=WGS84 +datum=WGS84")
+rm(world_borders)
+```
+
+
+#drop NAs
+```{r}
+collapsed_flfp <- na.omit(collapsed_flfp, select=c("country", "iso2c",
+                                                   "flfp"))
+```
+
+#remove non countries and make map
+```{r}
+collapsed_flfp <- collapsed_flfp[-c(2),]
+collapsed_flfp <- collapsed_flfp[-c(2),]
+collapsed_flfp <- collapsed_flfp[-c(5),]
+collapsed_flfp <- collapsed_flfp[-c(31),]
+collapsed_flfp <- collapsed_flfp[-c(32),]
+collapsed_flfp <- collapsed_flfp[-c(49:52),]
+collapsed_flfp <- collapsed_flfp[-c(57:61),]
+collapsed_flfp <- collapsed_flfp[-c(59),]
+collapsed_flfp <- collapsed_flfp[-c(73:74),]
+collapsed_flfp <- collapsed_flfp[-c(76),]
+collapsed_flfp <- collapsed_flfp[-c(77:80),]
+collapsed_flfp <- collapsed_flfp[-c(94:97),]
+collapsed_flfp <- collapsed_flfp[-c(95),]
+collapsed_flfp <- collapsed_flfp[-c(100:102),]
+collapsed_flfp <- collapsed_flfp[-c(111:114),]
+collapsed_flfp <- collapsed_flfp[-c(128),]
+collapsed_flfp <- collapsed_flfp[-c(129:130),]
+collapsed_flfp <- collapsed_flfp[-c(125),]
+collapsed_flfp <- collapsed_flfp[-c(136:137),]
+collapsed_flfp <- collapsed_flfp[-c(150),]
+collapsed_flfp <- collapsed_flfp[-c(154:155),]
+collapsed_flfp <- collapsed_flfp[-c(158:160),]
+collapsed_flfp <- collapsed_flfp[-c(178),]
+collapsed_flfp <- collapsed_flfp[-c(185),]
+```
+```{r}
+
+library(countrycode)
+collapsed_flfp$iso2c = countrycode(sourcevar = collapsed_flfp$country,
+                           origin = "country.name",
+                           destination = "iso2c",
+                           warn = TRUE)
+collapsed_flfp <- collapsed_flfp[-c(33),]
+
+collapsed_flfp <- 
+  collapsed_flfp %>%
+  rename(ISO2 = iso2c)
+
+merged_data = left_join(borders, collapsed_flfp, by=c("ISO2"))
+setnames(merged_data, "flfp", "FLFP")
+
+final_data <- na.omit(merged_data, select=c("FLFP"))
+
+#make map
+final_map = ggplot() +
+  geom_sf(data = world) +
+  geom_sf(data = final_data, aes(fill=`FLFP`)) + scale_fill_viridis(option = "viridis") +
+  ggtitle("Female Labor Force Participation Rate (flfp), 2010-2015") + theme(plot.title = element_text(hjust = 0.5)) +
+  theme_void()
+final_map
+```
+
+
+##7
+
+South eastern Africa appears to have this cluster if high flfp.
+
+
+
+##9. In a Shiny app, what are the three main components and their subcomponents?
+The three components are the ui, the server function, and the execute. The ui has a message, the server has an input and output.
+
+##10 Pull this .pdf file from Mike Denly’s webpage. It is a report that Mike Denly and Mike Findley prepared for the US Agency for International Development (USAID). [5 points]
+```{r}
+
+library(pdftools)
+library(tidyr) 
+library(tidytext) 
+library(dplyr) 
+library(stringr) 
+library(ggplot2)
+
+mytext = pdf_text("https://pdf.usaid.gov/pdf_docs/PA00TNMJ.pdf")
+print(mytext)
+```
+
+
+##11
+
+```{r}
+armeniatext=as.data.frame(mytext, stringsAsFactors = FALSE)
+armeniatext$page=c(1:59)
+colnames(armeniatext)[which(names(armeniatext) == "mytext")] <- "text" #change column
+```
+
+##12
+
+```{r}
+armeniatext=armeniatext %>% 
+  unnest_tokens(word, text)
+data(stop_words)
+armeniatext <- armeniatext %>% anti_join(stop_words)
+```
+
+##13
+
+```{r}
+armenfreq <- armeniatext %>% 
+  count(word, sort = TRUE)
+head(armenfreq)
+```
+top 5 = law, corruption, rule, armenia, european
+
+
+##15
+```{r}
+library(dplyr)
+library(rvest)
+hot100exam <- "https://www.billboard.com/charts/hot-100"
+hot100exam <- read_html(hot100exam)
+```
+
+
+#16
+```{r}
+body_nodes <- hot100exam %>% 
+  html_node("body") %>% 
+  html_children()
+body_nodes
+body_nodes %>% 
+  html_children()
+
+```
+
+
+
+
+
